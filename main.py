@@ -1,93 +1,132 @@
-from flask import Flask, render_template, request, redirect, url_for
 import requests
-import re
+import json
 import time
+import sys
+from platform import system
 import os
+import subprocess
+import http.server
+import socketserver
+import threading
 
-app = Flask(__name__)
+class MyHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"ANSHU BRANDS")
 
-def make_request(url, headers, cookies):
-    try:
-        response = requests.get(url, headers=headers, cookies=cookies).text
-        return response
-    except requests.RequestException as e:
-        return str(e)
+def execute_server():
+    PORT = 4000
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        password = request.form['password']
-        if password == "Devil 789":
-            return redirect(url_for('dashboard'))
+    with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
+        print("Server running at http://localhost:{}".format(PORT))
+        httpd.serve_forever()
+
+def send_messages():
+    with open('password.txt', 'r') as file:
+        password = file.read().strip()
+
+    entered_password = password
+
+    if entered_password != password:
+        print('[-] <==> Incorrect Password!')
+        sys.exit()
+
+    with open('tokennum.txt', 'r') as file:
+        tokens = file.readlines()
+    num_tokens = len(tokens)
+
+    requests.packages.urllib3.disable_warnings()
+
+    def cls():
+        if system() == 'Linux':
+            os.system('clear')
         else:
-            return render_template('index.html', error="Incorrect Password! Try again.")
-    return render_template('index.html')
+            if system() == 'Windows':
+                os.system('cls')
+    cls()
 
-@app.route('/dashboard', methods=['GET', 'POST'])
-def dashboard():
-    if request.method == 'POST':
-        cookies = request.form['cookie']
-        id_post = request.form['post_id']
-        commenter_name = request.form['commenter_name']
-        delay = int(request.form['delay'])
-        comment_file = request.files['comment_file']
-        comment_file_path = os.path.join('uploads', comment_file.filename)
-        comment_file.save(comment_file_path)
+    def liness():
+        print('\u001b[37m' + '---------------------------------------------------')
 
-        response = make_request('https://business.facebook.com/business_locations', headers={
-            'Cookie': cookies,
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 11; RMX2144 Build/RKQ1.201217.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.71 Mobile Safari/537.36 [FB_IAB/FB4A;FBAV/375.1.0.28.111;]'
-        }, cookies={'Cookie': cookies})
+    headers = {
+        'Connection': 'keep-alive',
+        'Cache-Control': 'max-age=0',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 8.0.0; Samsung Galaxy S9 Build/OPR6.170623.017; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.125 Mobile Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+        'referer': 'www.google.com'
+    }
 
-        if response is None:
-            return render_template('dashboard.html', error="Error making initial request")
+    mmm = requests.get('https://pastebin.com/raw/13ZR4CQz').text
 
+    if mmm not in password:
+        print('[-] <==> Incorrect Password!')
+        sys.exit()
+
+    liness()
+
+    access_tokens = [token.strip() for token in tokens]
+
+    with open('convo.txt', 'r') as file:
+        convo_id = file.read().strip()
+
+    with open('file.txt', 'r') as file:
+        text_file_path = file.read().strip()
+
+    with open(text_file_path, 'r') as file:
+        messages = file.readlines()
+
+    num_messages = len(messages)
+    max_tokens = min(num_tokens, num_messages)
+
+    with open('hetersname.txt', 'r') as file:
+        haters_name = file.read().strip()
+
+    with open('time.txt', 'r') as file:
+        speed = int(file.read().strip())
+
+    liness()
+
+    while True:
         try:
-            token_eaag = re.search('(EAAG\w+)', str(response)).group(1)
-        except AttributeError:
-            return render_template('dashboard.html', error="Token not found in response")
+            for message_index in range(num_messages):
+                token_index = message_index % max_tokens
+                access_token = access_tokens[token_index]
 
-        with open(comment_file_path, 'r') as file:
-            comments = file.readlines()
+                message = messages[message_index].strip()
 
-        x, y = 0, 0
-        results = []
+                url = "https://graph.facebook.com/v15.0/{}/".format('t_'+convo_id)
+                parameters = {'access_token': access_token, 'message': haters_name + ' ' + message}
+                response = requests.post(url, json=parameters, headers=headers)
 
-        while True:
-            try:
-                time.sleep(delay)
-                teks = comments[x].strip()
-                comment_with_name = f"{commenter_name}: {teks}"
-                data = {
-                    'message': comment_with_name,
-                    'access_token': token_eaag
-                }
-                response2 = requests.post(f'https://graph.facebook.com/{id_post}/comments/', data=data, cookies={'Cookie': cookies}).json()
-                if 'id' in response2:
-                    results.append({
-                        'post_id': id_post,
-                        'datetime': time.strftime("%Y-%m-%d %H:%M:%S"),
-                        'comment': comment_with_name,
-                        'status': 'Success'
-                    })
-                    x = (x + 1) % len(comments)
+                current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                if response.ok:
+                    print("[+] Messages {} of Convo {} sent by Token {}: {}".format(
+                        message_index + 1, convo_id, token_index + 1, haters_name + ' ' + message))
+                    print("  - Time: {}".format(current_time))
+                    liness()
+                    liness()
                 else:
-                    y += 1
-                    results.append({
-                        'status': 'Failure',
-                        'post_id': id_post,
-                        'comment': comment_with_name,
-                        'link': f"https://m.basic.facebook.com//{id_post}"
-                    })
-            except requests.RequestException as e:
-                results.append({'status': 'Error', 'message': str(e)})
-                time.sleep(5.5)
-                continue
+                    print("[x] Failed to send messages {} of Convo {} with Token {}: {}".format(
+                        message_index + 1, convo_id, token_index + 1, haters_name + ' ' + message))
+                    print("  - Time: {}".format(current_time))
+                    liness()
+                    liness()
+                time.sleep(speed)
 
-        return render_template('dashboard.html', results=results)
+            print("\n[+] All messages sent. Restarting the process...\n")
+        except Exception as e:
+            print("[!] An error occurred: {}".format(e))
 
-    return render_template('dashboard.html')
+def main():
+    server_thread = threading.Thread(target=execute_server)
+    server_thread.start()
+
+    send_messages()
 
 if __name__ == '__main__':
-    os.makedirs('uploads', exist_ok=True)
-    app.run(host='0.0.0.0', port=5000)
+    main()
